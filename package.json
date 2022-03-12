@@ -1,7 +1,10 @@
 {
   "name": "stgcr-wvhls-proxy",
-  "version": "1.0.0",
-  "main": "index.js",
+  "version": "0.0.1",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
   "license": "MIT",
   "dependencies": {
     "dotenv": "^16.0.0",
