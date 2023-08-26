@@ -83,7 +83,7 @@ const elHandler = async (url, res) => {
     const { adaptationSets } = await fetchManifest(manifestUrl.toString());
     const { bestRepresentation: mainRep } = adaptationSets.find(({isVideo}) => isVideo) || adaptationSets.find(({isAudio}) => isAudio);
     const { segmentDuration } = mainRep;
-    const endNumber = mainRep.startNumber;
+    const endNumber = Math.min(parseInt(url.searchParams.get('endNumber'), 10) || mainRep.startNumber, mainRep.startNumber);
     const startNumber = Math.max(parseInt(url.searchParams.get('startNumber'), 10) || (endNumber - 4), 1);
     const isVod = Boolean(url.searchParams.get('vod'));
     const length = endNumber - startNumber + 1;
