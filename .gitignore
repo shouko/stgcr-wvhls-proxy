@@ -1,4 +1,5 @@
 *.m4s
 *.mp4
+*.ts
 .env
 node_modules/
