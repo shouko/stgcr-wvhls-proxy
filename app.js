@@ -46,7 +46,7 @@ const stgcrHandler = async (url, key, res) => {
 };
 
 
-const elHandler = async (url, akey, vkey, res) => {
+const elHandler = async (url, res) => {
   const burl = new URL(url.searchParams.get('url'));
   if (!allowedElUpstreams.find((h) => burl.host.endsWith(h))) throw new Error();
 
@@ -58,12 +58,29 @@ const elHandler = async (url, akey, vkey, res) => {
   }
 
   const [
-    ainit,
-    abody,
-    vinit,
-    vbody,
-  ] = ['ainit', 'abody', 'vinit', 'vbody'].map((qkey) => {
-    const u = new URL(url.searchParams.get(qkey), burl);
+    inits,
+    bodies,
+    keys,
+  ] = ['inits', 'bodies', 'keys'].map((qkey) => {
+    const param = url.searchParams.get(qkey);
+    if (!param) return [];
+    try {
+      const parsed = JSON.parse(param);
+      if (Array.isArray(parsed) && parsed.every((x) => typeof x === 'string')) {
+        return parsed;
+      }
+    } catch(e) {
+      console.error(e);
+    }
+    return [param];
+  });
+  if (!keys.length) throw new Error('Missing key');
+  if (keys.some((maybeKey) => !keyRgx.match(maybeKey))) {
+    throw new Error('Invalid key format');
+  }
+
+  const buildUrls = (qkey, paths) => paths.map((path) => {
+    const u = new URL(path, burl);
     if (u.hostname !== burl.hostname) {
       throw new Error(`Hostname ${u.hostname} for key ${qkey} invalid`);
     }
@@ -74,15 +91,17 @@ const elHandler = async (url, akey, vkey, res) => {
     return u;
   });
 
-  const decryptedCombined = await getCombinedSegment([{
-    initUrl: ainit,
-    bodyUrl: abody,
-    key: akey,
-  }, {
-    initUrl: vinit,
-    bodyUrl: vbody,
-    key: vkey,
-  }]);
+  const initUrls = buildUrls('inits', inits);
+  const bodyUrls = buildUrls('bodies', bodies);
+  const length = Math.min(initUrls, bodyUrls);
+
+  const segmentParams = new Array(length).fill().map((_, i) => ({
+    initUrl: initUrls[i],
+    bodyUrl: bodyUrls[i],
+    key: i < keys.length ? keys[i] : keys[0],
+  }));
+
+  const decryptedCombined = await getCombinedSegment(segmentParams);
 
   return servePayload(res, segmentMime, decryptedCombined);
 };
@@ -92,12 +111,10 @@ const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
     const key = url.searchParams.get('key') || "";
-    const akey = url.searchParams.get('akey') || key;
-    const vkey = url.searchParams.get('vkey') || key;
     res.setHeader('access-control-allow-origin', '*');
 
     if (url.pathname == '/el') {
-      await elHandler(url, akey, vkey, res);
+      await elHandler(url, res);
       return;
     }
 
