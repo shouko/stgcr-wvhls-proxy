@@ -3,6 +3,7 @@ require('dotenv').config()
 const http = require('http');
 const fetch = require('./fetch');
 const { getSegment, getCombinedSegment } = require('./segment');
+const { fetchManifest } = require('./mpd');
 
 const addr = '0.0.0.0';
 const port = process.env.PORT || 3000;
@@ -45,23 +46,14 @@ const stgcrHandler = async (url, key, res) => {
   throw new Error();
 };
 
+const isAllowedDomain = (url) => allowedElUpstreams.some((h) => url.host.endsWith(h));
+
+const assertAllowedDomain = (url) => {
+  if (!isAllowedDomain(url)) throw new Error('Requested domain not in allowed list');
+};
 
 const elHandler = async (url, res) => {
-  const burl = new URL(url.searchParams.get('url'));
-  if (!allowedElUpstreams.find((h) => burl.host.endsWith(h))) throw new Error();
-
-  const bext = extractExt(burl.pathname);
-  if (bext == '.mpd') {
-    // generate m3u8 playlist base on mpd content
-    res.statusCode = 200;
-    res.setHeader('content-type', playlistMime);
-  }
-
-  const [
-    inits,
-    bodies,
-    keys,
-  ] = ['inits', 'bodies', 'keys'].map((qkey) => {
+  const parseArrSearchParam = (qkey) => {
     const param = url.searchParams.get(qkey);
     if (!param) return [];
     try {
@@ -70,15 +62,68 @@ const elHandler = async (url, res) => {
         return parsed;
       }
     } catch(e) {
-      console.error(e);
+      // console.error(e);
     }
     return [param];
-  });
+  };
+
+  const keys = [
+    ...parseArrSearchParam('keys'),
+    ...parseArrSearchParam('key'),
+  ]
   if (!keys.length) throw new Error('Missing key');
-  if (keys.some((maybeKey) => !keyRgx.match(maybeKey))) {
+  if (keys.some((maybeKey) => !maybeKey.match(keyRgx))) {
     throw new Error('Invalid key format');
   }
 
+  const urlParam = url.searchParams.get('url');
+  if (urlParam) {
+    const manifestUrl = new URL(url.searchParams.get('url'));
+    assertAllowedDomain(manifestUrl);
+    const { adaptationSets } = await fetchManifest(manifestUrl.toString());
+    const { bestRepresentation: mainRep } = adaptationSets.find(({isVideo}) => isVideo) || adaptationSets.find(({isAudio}) => isAudio);
+    const { segmentDuration } = mainRep;
+    const endNumber = mainRep.startNumber;
+    const startNumber = Math.max(parseInt(url.searchParams.get('startNumber'), 10) || (endNumber - 4), 1);
+    const isVod = Boolean(url.searchParams.get('vod'));
+    const length = endNumber - startNumber + 1;
+    const baseUrl = manifestUrl.href.substring(0, manifestUrl.href.lastIndexOf('/') + 1);
+    const text = [
+      '#EXTM3U',
+      '#EXT-X-TARGETDURATION:10',
+      ...(isVod ? ['#EXT-X-PLAYLIST-TYPE:VOD'] : []),
+      '#EXT-X-VERSION:4',
+      `#EXT-X-MEDIA-SEQUENCE:${startNumber}`,
+      ...new Array(length).fill().flatMap((_, i) => {
+        const num = startNumber + i;
+        const inits = adaptationSets.map(({bestRepresentation}) => bestRepresentation.initialization.split('?').shift());
+        const bodies = adaptationSets.map(({bestRepresentation}) => bestRepresentation.media.replace('$Number$', num).split('?').shift());
+        const query = [
+          ['burl', baseUrl],
+          ['inits', inits],
+          ['bodies', bodies],
+          ['keys', keys],
+        ].map(([k, v]) => `${k}=${encodeURIComponent(Array.isArray(v) ? JSON.stringify(v) : v)}`).join('&');
+        return [
+          `#EXTINF:${segmentDuration}`,
+          `el?${query}`,
+        ]
+      }),
+      ...(isVod ? ['#EXT-X-ENDLIST'] : []),
+      '',
+    ].join('\n');
+    res.statusCode = 200;
+    res.setHeader('content-type', playlistMime);
+    return res.end(text);
+  }
+
+  const [
+    inits,
+    bodies,
+  ] = ['inits', 'bodies'].map((qkey) => parseArrSearchParam(qkey));
+
+  const burl = new URL(url.searchParams.get('burl'));
+  assertAllowedDomain(burl);
   const buildUrls = (qkey, paths) => paths.map((path) => {
     const u = new URL(path, burl);
     if (u.hostname !== burl.hostname) {
@@ -88,12 +133,12 @@ const elHandler = async (url, res) => {
     if (['.mp4', '.m4s'].indexOf(ext) == -1) {
       throw new Error(`Extension ${ext} for key ${qkey} invalid`);
     }
-    return u;
+    return u.href;
   });
 
   const initUrls = buildUrls('inits', inits);
   const bodyUrls = buildUrls('bodies', bodies);
-  const length = Math.min(initUrls, bodyUrls);
+  const length = Math.min(initUrls.length, bodyUrls.length);
 
   const segmentParams = new Array(length).fill().map((_, i) => ({
     initUrl: initUrls[i],
