@@ -28,11 +28,12 @@ const server = http.createServer(async (req, res) => {
       res.statusCode = 200;
       res.setHeader('content-type', playlistMime);
       const filtered = resp.split("\n").filter((l) => !l.startsWith('#EXT-X-KEY') && !l.startsWith('#EXT-X-MAP:URI'));
-      const transformed = filtered.map((l) => l.startsWith('#') ? l : `${l}${l.endsWith('.m4s') ? '.ts' : ''}?key=${key}`).join("\n");
+      const transformed = filtered.map((l) => (l.startsWith('#') || !l.length) ? l : `${l}${l.endsWith('.m4s') ? '.ts' : ''}?key=${key}`).join("\n");
       res.end(transformed);
     } else if (ext == '.ts') {
       const decrypted = await getSegment(`${upstream}${url.pathname.substr(0, url.pathname.lastIndexOf('.'))}`, key);
       res.statusCode = 200;
+      res.setHeader('cache-control', 'public, max-age=86400');
       res.setHeader('content-type', segmentMime);
       res.end(decrypted);
     }
