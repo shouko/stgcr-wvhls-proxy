@@ -15,7 +15,7 @@ module.exports = async (url, options = {}) => {
 
   console.info(`CACHE MISS: ${url}`);
 
-  const cachable = url.endsWith('init.mp4') || url.endsWith('.mpd');
+  const cachable = url.endsWith('.mp4') || url.endsWith('.m4s');
   const isText = url.endsWith('.m3u8') || url.endsWith('.mpd');
 
   return fetch(url, {
