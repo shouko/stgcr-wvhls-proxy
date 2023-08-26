@@ -1,4 +1,7 @@
+const os = require('os');
+const fs = require('fs');
 const { spawn } = require('child_process');
+const { v4: uuidv4 } = require('uuid');
 const ffmpegPath = require('ffmpeg-static');
 const fetch = require('./fetch');
 
@@ -54,29 +57,28 @@ const getSegment = (url, key, initUrl) => new Promise(async (resolve, reject) =>
   ff.stdin.end();
 });
 
-const getCombinedSegment = async (ainiturl, abodyurl, akey, viniturl, vbodyurl, vkey) => {
-  const [
-    aseg,
-    vseg,
-  ] = await Promise.all([
-    getSegment(abodyurl, akey, ainiturl),
-    getSegment(vbodyurl, vkey, viniturl),
-  ]);
+const getSegmentFile = async (url, key, initUrl) => {
+  const fn = `${os.tmpdir()}/${uuidv4()}.ts`;
+  const data = await getSegment(url, key, initUrl);
+  await fs.promises.writeFile(fn, data);
+  return fn;
+};
 
-  const inputArgs = [
-    '-f', 'mpegts',
-    '-i', 'pipe:0',
-  ];
+const getCombinedSegment = async (segs) => new Promise(async (resolve, reject) => {
+  const filenames = await Promise.all(segs.map(
+    ({initUrl, bodyUrl, key}) => getSegmentFile(bodyUrl, key, initUrl)
+  ));
 
-  const ff = createFfmpeg(inputArgs, (err, data) => {
+  const inputArgs = filenames.map((fn) => ['-i', fn]).flat();
+
+  createFfmpeg(inputArgs, async (err, data) => {
+    await Promise.all(filenames.map(
+      (fn) => fs.promises.unlink(fn)
+    ));
     if (err) return reject(err);
     return resolve(data);
   });
-
-  ff.stdin.write(aseg);
-  ff.stdin.write(vseg);
-  ff.stdin.end();
-}
+});
 
 module.exports = {
   getSegment,
