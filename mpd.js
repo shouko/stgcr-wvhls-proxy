@@ -68,7 +68,7 @@ const parseRepresentation = (rep) => {
 
   return {
     protected: contentProtections.length > 0,
-    defaultKID: defaultKIDEntry && defaultKIDEntry[defaultKIDKey],
+    defaultKID: defaultKIDEntry && defaultKIDEntry[defaultKIDKey]?.replace(/-/g, '').toLowerCase(),
     segmentDuration,
     wvPSSH: wvPSSHEntry && wvPSSHEntry['cenc:pssh']['#text'],
     ...audioChannelsObj,
