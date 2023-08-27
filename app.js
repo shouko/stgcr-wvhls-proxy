@@ -42,8 +42,19 @@ const serveJson = (res, body, statusCode) => servePayload(
   statusCode,
 );
 
+const sendError = (res, message) => serveJson(
+  res,
+  {
+    success: false,
+    message: message,
+  },
+  400,
+)
+
 const stgcrHandler = async (url, key, res) => {
-  if (!key.match(keyRgx)) throw new Error();
+  if (!key.match(keyRgx)) {
+    return sendError(res, 'Invalid key');
+  }
 
   const ext = extractExt(url.pathname);
   if (ext == '.m3u8') {
@@ -84,9 +95,9 @@ const elHandler = async (url, res) => {
     ...parseArrSearchParam('keys'),
     ...parseArrSearchParam('key'),
   ]
-  if (!keys.length) throw new Error('Missing key');
+  if (!keys.length) return sendError(res, 'Missing key');
   if (keys.some((maybeKey) => !maybeKey.match(keyRgx))) {
-    throw new Error('Invalid key format');
+    return sendError(res, 'Invalid key');
   }
 
   const urlParam = url.searchParams.get('url');
@@ -187,7 +198,7 @@ const server = http.createServer(async (req, res) => {
     console.error(e);
     return serveJson(res, {
       success: false,
-    }, 404);
+    }, 500);
   }
 });
 
