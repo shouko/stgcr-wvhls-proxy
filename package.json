@@ -12,6 +12,9 @@
   "dependencies": {
     "dotenv": "^16.0.0",
     "ffmpeg-static": "^4.4.1",
-    "lru-cache": "^6.0.0"
+    "lru-cache": "^6.0.0",
+    "objtree": "^0.1.24",
+    "uuid": "^9.0.0",
+    "which": "^3.0.1"
   }
 }

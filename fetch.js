@@ -3,7 +3,7 @@ const LRU = require('lru-cache');
 
 const httpsAgent = new https.Agent({ keepAlive: true });
 const cache = new LRU({
-  max: 50,
+  max: parseInt(process.env.MAX_CACHE_ENTRIES) || 10,
   maxAge: 60 * 60 * 1000,
 });
 
@@ -15,13 +15,13 @@ module.exports = async (url, options = {}) => {
 
   console.info(`CACHE MISS: ${url}`);
 
-  const cachable = url.endsWith('init.mp4') || url.endsWith('.mpd');
+  const cachable = url.endsWith('.mp4') || url.endsWith('.m4s');
   const isText = url.endsWith('.m3u8') || url.endsWith('.mpd');
 
   return fetch(url, {
     agent: httpsAgent,
     headers: {
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:62.0) Gecko/20100101 Firefox/62.0'
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
     },
     ...options
   }).then((r) => {
