@@ -182,7 +182,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    await stgcrHandler(key, url, res);
+    await stgcrHandler(url, key, res);
   } catch(e) {
     console.error(e);
     return serveJson(res, {
