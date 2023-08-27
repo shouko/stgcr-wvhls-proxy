@@ -1,0 +1,19 @@
+version: '3'
+services:
+  wvhls-px:
+    build:
+      context: .
+    ports:
+      - "127.0.0.1:${PORT}:${PORT}"
+    environment:
+      - NODE_ENV=production
+      - UPSTREAM=${UPSTREAM}
+      - ALLOWED_EL_UPSTREAMS=${ALLOWED_EL_UPSTREAMS}
+      - MAX_CACHE_ENTRIES=${MAX_CACHE_ENTRIES}
+      - PORT=${PORT}
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:${PORT}/_stats || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
