@@ -3,7 +3,7 @@ const LRU = require('lru-cache');
 
 const httpsAgent = new https.Agent({ keepAlive: true });
 const cache = new LRU({
-  max: 50,
+  max: parseInt(process.env.MAX_CACHE_ENTRIES) || 10,
   maxAge: 60 * 60 * 1000,
 });
 
