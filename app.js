@@ -13,19 +13,31 @@ const allowedElUpstreams = (process.env.ALLOWED_EL_UPSTREAMS || '').split(',').m
 
 const playlistMime = 'application/x-mpegURL';
 const segmentMime = 'video/mp2t';
+const jsonMime = 'application/json';
 const keyRgx = /^[0-9a-f]{32}$/;
-const segmentCacheHeader = 'public, max-age=86400';
+
+const cacheHeaderByMime = new Map([
+  [segmentMime, 'public, max-age=86400'],
+  [playlistMime, 'public, max-age=1'],
+  [jsonMime, 'no-cache'],
+]);
 
 const extractExt = (s) => s.substr(s.lastIndexOf('.')).toLowerCase();
 
 const servePayload = (res, mime, payload) => {
   res.statusCode = 200;
   res.setHeader('content-type', mime);
-  if (mime === segmentMime) {
-    res.setHeader('cache-control', segmentCacheHeader);
+  if (cacheHeaderByMime.has(mime)) {
+    res.setHeader('cache-control', cacheHeaderByMime.get(mime));
   }
   return res.end(payload);
 };
+
+const serveJson = (res, body) => servePayload(
+  res,
+  jsonMime,
+  JSON.stringify(body, null, 2),
+);
 
 const stgcrHandler = async (url, key, res) => {
   if (!key.match(keyRgx)) throw new Error();
@@ -33,11 +45,9 @@ const stgcrHandler = async (url, key, res) => {
   const ext = extractExt(url.pathname);
   if (ext == '.m3u8') {
     const resp = await fetch(`${upstream}${url.pathname}`);
-    res.statusCode = 200;
-    res.setHeader('content-type', playlistMime);
     const filtered = resp.split("\n").filter((l) => !l.startsWith('#EXT-X-KEY') && !l.startsWith('#EXT-X-MAP:URI'));
     const transformed = filtered.map((l) => (l.startsWith('#') || !l.length) ? l : `${l}${l.endsWith('.m4s') ? '.ts' : ''}?key=${key}`).join("\n");
-    return res.end(transformed);
+    return servePayload(res, playlistMime, transformed);
   } else if (ext == '.ts') {
     const decrypted = await getSegment(`${upstream}${url.pathname.substr(0, url.pathname.lastIndexOf('.'))}`, key);
     return servePayload(res, segmentMime, decrypted);
@@ -112,9 +122,7 @@ const elHandler = async (url, res) => {
       ...(isVod ? ['#EXT-X-ENDLIST'] : []),
       '',
     ].join('\n');
-    res.statusCode = 200;
-    res.setHeader('content-type', playlistMime);
-    return res.end(text);
+    return servePayload(res, playlistMime, text);
   }
 
   const [
@@ -159,13 +167,13 @@ const server = http.createServer(async (req, res) => {
     res.setHeader('access-control-allow-origin', '*');
 
     if (url.pathname == '/') {
-      return res.end(JSON.stringify({
+      return serveJson(res, {
         message: 'hello world!',
-      }));
+      })
     } else if (url.pathname == '/_stats') {
-      return res.end(JSON.stringify({
+      return serveJson(res, {
         memoryUsage: process.memoryUsage(),
-      }));
+      });
     } else if (url.pathname == '/el') {
       await elHandler(url, res);
       return;
