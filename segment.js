@@ -2,7 +2,8 @@ const os = require('os');
 const fs = require('fs');
 const { spawn } = require('child_process');
 const { v4: uuidv4 } = require('uuid');
-const ffmpegPath = require('ffmpeg-static');
+const which = require('which');
+const ffmpegPath = which.sync('ffmpeg', { nothrow: true }) || require('ffmpeg-static');
 const fetch = require('./fetch');
 
 const extractPath = (s) => s.substr(0, s.lastIndexOf('/'));
