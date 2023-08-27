@@ -158,7 +158,15 @@ const server = http.createServer(async (req, res) => {
     const key = url.searchParams.get('key') || "";
     res.setHeader('access-control-allow-origin', '*');
 
-    if (url.pathname == '/el') {
+    if (url.pathname == '/') {
+      return res.end(JSON.stringify({
+        message: 'hello world!',
+      }));
+    } else if (url.pathname == '/_stats') {
+      return res.end(JSON.stringify({
+        memoryUsage: process.memoryUsage(),
+      }));
+    } else if (url.pathname == '/el') {
       await elHandler(url, res);
       return;
     }
