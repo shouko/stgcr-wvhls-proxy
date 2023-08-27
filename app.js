@@ -24,19 +24,22 @@ const cacheHeaderByMime = new Map([
 
 const extractExt = (s) => s.substr(s.lastIndexOf('.')).toLowerCase();
 
-const servePayload = (res, mime, payload) => {
-  res.statusCode = 200;
+const servePayload = (res, mime, payload, statusCode) => {
+  res.statusCode = statusCode || 200;
   res.setHeader('content-type', mime);
-  if (cacheHeaderByMime.has(mime)) {
+  if (cacheHeaderByMime.has(mime) && payload.length > 0) {
     res.setHeader('cache-control', cacheHeaderByMime.get(mime));
+  } else {
+    res.setHeader('cache-control', 'no-cache');
   }
   return res.end(payload);
 };
 
-const serveJson = (res, body) => servePayload(
+const serveJson = (res, body, statusCode) => servePayload(
   res,
   jsonMime,
   JSON.stringify(body, null, 2),
+  statusCode,
 );
 
 const stgcrHandler = async (url, key, res) => {
@@ -182,9 +185,9 @@ const server = http.createServer(async (req, res) => {
     await stgcrHandler(key, url, res);
   } catch(e) {
     console.error(e);
-    res.statusCode = 404;
-    res.setHeader('content-type', 'text/plain');
-    res.end('');
+    return serveJson(res, {
+      success: false,
+    }, 404);
   }
 });
 
