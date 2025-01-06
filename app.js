@@ -27,7 +27,7 @@ const extractExt = (s) => s.substr(s.lastIndexOf('.')).toLowerCase();
 const servePayload = (res, mime, payload, statusCode) => {
   res.statusCode = statusCode || 200;
   res.setHeader('content-type', mime);
-  if (cacheHeaderByMime.has(mime) && payload.length > 0) {
+  if (cacheHeaderByMime.has(mime) && payload.length > 0 && res.statusCode == 200) {
     res.setHeader('cache-control', cacheHeaderByMime.get(mime));
   } else {
     res.setHeader('cache-control', 'no-cache');
