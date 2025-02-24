@@ -1,15 +1,12 @@
-require('dotenv').config()
-
 const http = require('http');
 const fetch = require('./fetch');
+const {
+  port,
+  allowedElUpstreams,
+  upstream,
+} = require('./config');
 const { getSegment, getCombinedSegment } = require('./segment');
 const { fetchManifest } = require('./mpd');
-
-const addr = '0.0.0.0';
-const port = process.env.PORT || 3000;
-
-const upstream = process.env.UPSTREAM || '';
-const allowedElUpstreams = (process.env.ALLOWED_EL_UPSTREAMS || '').split(',').map((h) => h.trim()).filter((h) => h.length);
 
 const playlistMime = 'application/x-mpegURL';
 const segmentMime = 'video/mp2t';
@@ -202,6 +199,7 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+const addr = '0.0.0.0';
 server.listen(port, addr, () => {
   console.log(`Server running at http://${addr}:${port}/`);
 });
