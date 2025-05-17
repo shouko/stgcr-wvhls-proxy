@@ -147,6 +147,11 @@ string_decoder@^1.1.1:
   dependencies:
     safe-buffer "~5.2.0"
 
+top-user-agents@^2.1.50:
+  version "2.1.50"
+  resolved "https://registry.yarnpkg.com/top-user-agents/-/top-user-agents-2.1.50.tgz#bc814cf0c2254471d5eb9393e51f519f7955f196"
+  integrity sha512-lYEX33Y1de+Wj6wagWiIZUWK6GQfelYIrLmrVMaCkO2Ka4mQ7RxCX4nzma026N2FxnL89+nmJFwo0Ra/IDy69A==
+
 typedarray@^0.0.6:
   version "0.0.6"
   resolved "https://registry.yarnpkg.com/typedarray/-/typedarray-0.0.6.tgz#867ac74e3864187b1d3d47d996a78ec5c8830777"

@@ -14,6 +14,7 @@
     "ffmpeg-static": "^4.4.1",
     "lru-cache": "^6.0.0",
     "objtree": "^0.1.24",
+    "top-user-agents": "^2.1.50",
     "uuid": "^9.0.0",
     "which": "^3.0.1"
   }

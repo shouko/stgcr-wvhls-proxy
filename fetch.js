@@ -1,5 +1,6 @@
 const https = require('https');
 const LRU = require('lru-cache');
+const userAgents = require('top-user-agents/desktop');
 
 const httpsAgent = new https.Agent({ keepAlive: true });
 const cache = new LRU({
@@ -21,7 +22,7 @@ module.exports = async (url, options = {}) => {
   return fetch(url, {
     agent: httpsAgent,
     headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
+      'User-Agent': userAgents[Math.floor(Math.random() * userAgents.length)]
     },
     ...options
   }).then((r) => {
