@@ -9,6 +9,7 @@ services:
       - NODE_ENV=production
       - UPSTREAM=${UPSTREAM}
       - ALLOWED_EL_UPSTREAMS=${ALLOWED_EL_UPSTREAMS}
+      - HAPPY_EL_UPSTREAMS=${EL_HAPPY_UPSTREAMS}
       - MAX_CACHE_ENTRIES=${MAX_CACHE_ENTRIES}
       - PORT=${PORT}
     restart: always
