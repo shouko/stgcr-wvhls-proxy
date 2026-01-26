@@ -24,8 +24,17 @@ module.exports = async (url, options = {}) => {
 
   console.info(`CACHE MISS: ${url}`);
 
-  const cachable = url.endsWith('.mp4') || url.endsWith('.m4s');
-  const isText = url.endsWith('.m3u8') || url.endsWith('.mpd');
+  const path = (new URL(url)).pathname;
+  const mediaTypes = [
+    "video/mp4",
+    //"application/octet-stream", // init.mp4 and others ...?
+  ];
+  const manifestTypes = [
+    "application/vnd.apple.mpegurl", // m3u8
+    "application/dash+xml", // mpd
+  ];
+  const cachable = contentType => path.endsWith('.mp4') || path.endsWith('.m4s') || mediaTypes.includes(contentType);
+  const isText = contentType => path.endsWith('.m3u8') || path.endsWith('.mpd') || manifestTypes.includes(contentType);
 
   return fetch(rewriteRequestUrl(url), {
     agent: httpsAgent,
@@ -34,10 +43,13 @@ module.exports = async (url, options = {}) => {
     },
     ...options
   }).then((r) => {
-    if (isText) return r.text()
-    return r.arrayBuffer().then((ab) => Buffer.from(ab));
-  }).then((r) => {
-    if (cachable) cache.set(url, r);
-    return r;
+    const contentType = r.headers.get("Content-Type");
+    if (!mediaTypes.includes(contentType) && !manifestTypes.includes(contentType)) console.warn(`Unknown content-type ${contentType} for ${path}`);
+    if (isText(contentType)) return r.text();
+    return r.arrayBuffer().then((ab) => Buffer.from(ab))
+      .then((r) => {
+        if (cachable(contentType)) cache.set(url, r);
+        return r;
+      })
   });
 };
